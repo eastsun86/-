@@ -25,9 +25,22 @@
    python3 -m http.server 8000   # 또는 npm run serve
    # 브라우저에서 http://localhost:8000
    ```
-   GitHub Pages에 올려도 그대로 동작합니다(빌드 불필요).
+   GitHub Pages 배포는 아래 "배포" 항목을 보세요.
 3. API 키, 보고 주제, 회의 성격, 대상 임원, 보고 자료(붙여넣기 또는 PDF·TXT·MD 파일)를 넣고 **예상 질문 만들기**를 누릅니다.
 4. 결과는 분야·난이도·질문자로 거르거나, **연습 모드**(답변 가리기)로 리허설할 수 있고, 마크다운 복사·`.md` 저장·인쇄(PDF)가 됩니다.
+
+## 배포 (GitHub Pages)
+
+`.github/workflows/pages.yml`이 이 브랜치에 푸시될 때마다 단위 테스트 후 `index.html`과 `src/`만 Pages에 배포합니다.
+
+처음 한 번은 설정이 필요합니다.
+1. 무료 플랜이면 레포를 **공개(Public)**로 바꿉니다. (Settings → General → Danger Zone → Change visibility) 무료 플랜의 Pages는 공개 레포에서만 됩니다.
+2. **Settings → Pages → Build and deployment → Source**를 **GitHub Actions**로 바꿉니다.
+3. **Actions** 탭에서 "Deploy to GitHub Pages"를 다시 실행합니다(Re-run).
+
+배포 주소: `https://eastsun86.github.io/-/`
+
+Pages 사이트는 레포 공개 여부와 관계없이 누구나 접속할 수 있습니다. API 키는 사이트에 들어 있지 않고 각 사용자가 직접 입력하므로 사이트 공개 자체로 키가 노출되지는 않습니다.
 
 ## 보안·비용 참고
 
