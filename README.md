@@ -19,7 +19,7 @@
 
 ## 사용법
 
-1. [Anthropic Console](https://console.anthropic.com)에서 API 키를 발급받습니다.
+1. [Claude Console](https://platform.claude.com)에서 API 키를 발급받습니다.
 2. `index.html`을 웹 서버로 엽니다. (파일을 바로 열면 모듈 로딩이 막히므로 서버가 필요합니다)
    ```bash
    python3 -m http.server 8000   # 또는 npm run serve
