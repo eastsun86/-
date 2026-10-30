@@ -1,0 +1,16 @@
+{
+  "name": "executive-qa-generator",
+  "version": "1.0.0",
+  "private": true,
+  "description": "보고 자료로 임원 예상 질문과 답변 초안을 만드는 웹앱",
+  "type": "module",
+  "scripts": {
+    "serve": "python3 -m http.server 8000",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test tests/unit.test.js && node tests/e2e.mjs"
+  },
+  "devDependencies": {
+    "@anthropic-ai/sdk": "0.135.0",
+    "typescript": "5.9.3"
+  }
+}

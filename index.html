@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>임원 예상 질문 생성기</title>
+<meta name="description" content="보고 자료를 넣으면 임원이 던질 예상 질문과 답변 초안을 만들어 줍니다.">
+<script type="importmap">
+{ "imports": { "@anthropic-ai/sdk": "https://cdn.jsdelivr.net/npm/@anthropic-ai/sdk@0.135.0/+esm" } }
+</script>
+<style>
+:root {
+  --bg: #f6f7f9; --surface: #ffffff; --surface-2: #f0f2f5; --text: #16181d; --muted: #5d6573;
+  --border: #dfe3e8; --accent: #2b5fd9; --accent-text: #ffffff; --accent-soft: #e7eefc;
+  --ok: #1f7a4d; --ok-soft: #e3f4ea; --warn: #9a5b00; --warn-soft: #fdf1dc; --bad: #b42318; --bad-soft: #fde8e6;
+  --radius: 12px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111317; --surface: #1a1d23; --surface-2: #22262d; --text: #e9ebef; --muted: #a0a7b4;
+    --border: #2f343c; --accent: #7aa2ff; --accent-text: #0d1220; --accent-soft: #1f2a44;
+    --ok: #6fd3a0; --ok-soft: #173326; --warn: #f2bd63; --warn-soft: #3a2c12; --bad: #ff8a80; --bad-soft: #3d1c1a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111317; --surface: #1a1d23; --surface-2: #22262d; --text: #e9ebef; --muted: #a0a7b4;
+  --border: #2f343c; --accent: #7aa2ff; --accent-text: #0d1220; --accent-soft: #1f2a44;
+  --ok: #6fd3a0; --ok-soft: #173326; --warn: #f2bd63; --warn-soft: #3a2c12; --bad: #ff8a80; --bad-soft: #3d1c1a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--text);
+  font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui, sans-serif;
+  word-break: keep-all; overflow-wrap: anywhere;
+}
+main { max-width: 860px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 1.5rem; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; margin: 0 0 12px; }
+.lead { color: var(--muted); margin: 0 0 20px; }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 16px; }
+label, .label { display: block; font-weight: 600; font-size: 0.9rem; margin: 14px 0 6px; }
+label:first-child, .label:first-child { margin-top: 0; }
+.hint { color: var(--muted); font-size: 0.82rem; font-weight: 400; }
+input[type="text"], input[type="password"], textarea, select {
+  width: 100%; font: inherit; color: var(--text); background: var(--surface);
+  border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px;
+}
+textarea { min-height: 180px; resize: vertical; }
+input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+.row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 560px) { .row { grid-template-columns: 1fr; } }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { position: relative; }
+.chip input { position: absolute; opacity: 0; inset: 0; }
+.chip span {
+  display: inline-block; padding: 6px 12px; border: 1px solid var(--border); border-radius: 999px;
+  background: var(--surface); font-size: 0.88rem; cursor: pointer; user-select: none;
+}
+.chip input:checked + span { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.chip input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+button {
+  font: inherit; font-weight: 600; border-radius: 8px; padding: 10px 16px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+}
+button.primary { background: var(--accent); color: var(--accent-text); border-color: var(--accent); width: 100%; padding: 13px; font-size: 1rem; }
+button:disabled { opacity: 0.55; cursor: not-allowed; }
+button.small { padding: 6px 12px; font-size: 0.85rem; }
+.inline { display: flex; align-items: center; gap: 8px; font-weight: 400; margin: 8px 0 0; font-size: 0.88rem; }
+.files { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.file-tag { display: inline-flex; align-items: center; gap: 6px; background: var(--surface-2); border-radius: 6px; padding: 4px 8px; font-size: 0.85rem; }
+.file-tag button { border: 0; background: none; padding: 0 2px; color: var(--muted); }
+.status { margin-top: 12px; font-size: 0.9rem; color: var(--muted); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.notice { border-radius: 8px; padding: 10px 12px; font-size: 0.9rem; margin-top: 12px; }
+.notice.error { background: var(--bad-soft); color: var(--bad); }
+.notice.warn { background: var(--warn-soft); color: var(--warn); }
+.notice.info { background: var(--accent-soft); color: var(--text); }
+details.settings > summary { cursor: pointer; font-weight: 600; }
+details.settings[open] > summary { margin-bottom: 12px; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+.toolbar select { width: auto; padding: 6px 10px; font-size: 0.85rem; }
+.toolbar .spacer { flex: 1; }
+.overview p { margin: 0 0 8px; }
+.overview ul { margin: 0; padding-left: 20px; }
+.q { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.q-meta { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-weight: 600; }
+.badge.d-상 { background: var(--bad-soft); color: var(--bad); }
+.badge.d-중 { background: var(--warn-soft); color: var(--warn); }
+.badge.d-하 { background: var(--ok-soft); color: var(--ok); }
+.q-text { font-size: 1.05rem; font-weight: 700; margin: 0 0 6px; }
+.q-intent { color: var(--muted); font-size: 0.88rem; margin: 0 0 10px; }
+.q details > summary { cursor: pointer; font-weight: 600; color: var(--accent); font-size: 0.9rem; }
+.answer { margin-top: 10px; }
+.answer .conclusion { font-weight: 600; margin: 0 0 8px; padding: 10px 12px; background: var(--accent-soft); border-radius: 8px; }
+.points { list-style: none; padding: 0; margin: 0 0 8px; }
+.points li { padding: 8px 0; border-top: 1px solid var(--border); }
+.points li:first-child { border-top: 0; }
+.basis { font-size: 0.75rem; font-weight: 600; margin-left: 6px; }
+.basis.b-확인 { color: var(--warn); }
+.basis.b-보고자료 { color: var(--accent); }
+.basis.b-일반 { color: var(--muted); }
+blockquote { margin: 6px 0 0; padding: 4px 10px; border-left: 3px solid var(--border); color: var(--muted); font-size: 0.86rem; }
+.check { font-size: 0.75rem; margin-top: 4px; display: inline-block; padding: 1px 6px; border-radius: 4px; }
+.check.ok { background: var(--ok-soft); color: var(--ok); }
+.check.pdf, .check.missing { background: var(--warn-soft); color: var(--warn); }
+.sub { font-size: 0.85rem; font-weight: 700; margin: 12px 0 4px; }
+.sub + ul { margin: 0; padding-left: 20px; font-size: 0.9rem; }
+.pitfall { font-size: 0.9rem; color: var(--bad); margin: 10px 0 0; }
+.empty { color: var(--muted); text-align: center; padding: 24px; }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+footer { color: var(--muted); font-size: 0.8rem; text-align: center; margin-top: 24px; }
+[hidden] { display: none !important; }
+@media print {
+  body { background: #fff; color: #000; }
+  #input-section, .toolbar, footer, details.settings { display: none !important; }
+  .q, .card { break-inside: avoid; border-color: #ccc; }
+  .q details { display: block; }
+  .q details > summary { display: none; }
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>임원 예상 질문 생성기</h1>
+  <p class="lead">보고 자료를 넣으면 임원이 물어볼 질문과 답변 초안, 꼬리 질문, 준비할 자료를 정리해 드립니다.</p>
+
+  <section id="input-section">
+    <div class="card">
+      <details class="settings" id="settings">
+        <summary>Claude API 키 설정</summary>
+        <label for="api-key">API 키 <span class="hint">— console.anthropic.com에서 발급</span></label>
+        <input id="api-key" type="password" autocomplete="off" placeholder="sk-ant-...">
+        <label class="inline"><input id="remember-key" type="checkbox"> 이 브라우저에 저장</label>
+        <p class="hint">키는 이 브라우저에서 Anthropic API(api.anthropic.com)로만 직접 전송됩니다. 공용 PC에서는 저장하지 마세요.</p>
+      </details>
+    </div>
+
+    <form class="card" id="form" novalidate>
+      <h2>보고 정보</h2>
+      <label for="topic">보고 주제 <span class="hint">(필수)</span></label>
+      <input id="topic" type="text" placeholder="예: 2027년 동남아 물류센터 신규 투자안" required>
+
+      <div class="row">
+        <div>
+          <label for="meeting">회의 성격</label>
+          <select id="meeting"></select>
+        </div>
+        <div>
+          <label for="count">질문 개수</label>
+          <select id="count">
+            <option value="5">5개</option>
+            <option value="10" selected>10개</option>
+            <option value="15">15개</option>
+            <option value="20">20개</option>
+          </select>
+        </div>
+      </div>
+
+      <span class="label" id="exec-label">보고 대상 임원 <span class="hint">(여러 명 선택 가능)</span></span>
+      <div class="chips" id="execs" role="group" aria-labelledby="exec-label"></div>
+
+      <label for="material">보고 자료 <span class="hint">— 본문을 붙여넣거나 파일(PDF·TXT·MD)을 불러오세요</span></label>
+      <textarea id="material" placeholder="보고서 본문, 요약, 핵심 수치 등을 붙여넣으세요. 자료에 있는 내용만 근거로 씁니다."></textarea>
+      <div class="toolbar" style="margin:8px 0 0">
+        <button type="button" class="small" id="file-btn">파일 불러오기</button>
+        <input id="file" type="file" accept=".pdf,.txt,.md,application/pdf,text/plain,text/markdown" multiple hidden>
+        <span class="hint" id="material-count"></span>
+      </div>
+      <div class="files" id="file-list"></div>
+
+      <label for="extra">추가 맥락 <span class="hint">(선택) 임원 성향, 지난 회의 지적사항, 민감한 이슈 등</span></label>
+      <textarea id="extra" style="min-height:80px" placeholder="예: CFO가 지난 분기 회수기간을 문제 삼았음. 대표는 경쟁사 대비 속도를 중시."></textarea>
+
+      <label for="effort">분석 깊이</label>
+      <select id="effort">
+        <option value="medium">빠르게</option>
+        <option value="high" selected>표준</option>
+        <option value="xhigh">정밀 (시간이 더 걸림)</option>
+      </select>
+
+      <div style="margin-top:18px">
+        <button type="submit" class="primary" id="go">예상 질문 만들기</button>
+      </div>
+      <div class="status" id="status" hidden>
+        <span class="spinner" aria-hidden="true"></span>
+        <span id="status-text" role="status" aria-live="polite"></span>
+        <button type="button" class="small" id="cancel">중단</button>
+      </div>
+      <div id="message"></div>
+    </form>
+  </section>
+
+  <section id="result-section" hidden>
+    <div class="toolbar">
+      <select id="f-cat" aria-label="분야 필터"></select>
+      <select id="f-diff" aria-label="난이도 필터">
+        <option value="">난이도 전체</option>
+        <option value="상">상</option><option value="중">중</option><option value="하">하</option>
+      </select>
+      <select id="f-asker" aria-label="질문자 필터"></select>
+      <label class="inline" style="margin:0"><input type="checkbox" id="practice"> 연습 모드</label>
+      <span class="spacer"></span>
+      <button type="button" class="small" id="copy-md">마크다운 복사</button>
+      <button type="button" class="small" id="save-md">.md 저장</button>
+      <button type="button" class="small" id="print">인쇄/PDF</button>
+    </div>
+    <div id="verify-note"></div>
+    <div class="card overview" id="overview"></div>
+    <div id="questions"></div>
+    <div class="card" id="gaps"></div>
+  </section>
+
+  <footer>AI가 만든 초안입니다. 숫자와 사실은 보고 전에 반드시 원문과 대조하세요.</footer>
+</main>
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
